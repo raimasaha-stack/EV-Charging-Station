@@ -1,356 +1,661 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ChargeSense — EV Demand Prediction Platform</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>
-  :root{
-    --bg:#0A1626;
-    --surface:#0F2038;
-    --surface-2:#152A47;
-    --line:#22385A;
-    --teal:#3EE7B4;
-    --amber:#FFB454;
-    --red:#FF7A6E;
-    --text:#EAF1FF;
-    --muted:#8FA5C7;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0;
-    background:radial-gradient(circle at 15% 0%, #0E2038 0%, #0A1626 55%);
-    color:var(--text);
-    font-family:'Inter',sans-serif;
-    min-height:100vh;
-  }
-  h1,h2,h3,.num{font-family:'Space Grotesk',sans-serif;}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChargeSense — EV Demand Prediction Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg: #0A1626;
+            --surface: #0F2038;
+            --surface-2: #152A47;
+            --line: #22385A;
+            --teal: #3EE7B4;
+            --amber: #FFB454;
+            --red: #FF7A6E;
+            --text: #EAF1FF;
+            --muted: #8FA5C7;
+        }
 
-  .topbar{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-end;
-    padding:28px 36px 18px;
-    border-bottom:1px solid var(--line);
-  }
-  .brand{display:flex; align-items:center; gap:12px;}
-  .brand .mark{
-    width:34px;height:34px;border-radius:8px;
-    background:linear-gradient(135deg,var(--teal),#1E9E7A);
-    display:flex;align-items:center;justify-content:center;
-    font-weight:700;color:#06251C;font-size:15px;
-  }
-  .brand h1{font-size:19px;margin:0;font-weight:600;letter-spacing:.2px;}
-  .brand p{margin:2px 0 0;font-size:12.5px;color:var(--muted);}
-  .meta{text-align:right;font-size:12.5px;color:var(--muted);line-height:1.6;}
-  .meta b{color:var(--text);}
+        * {
+            box-sizing: border-box;
+        }
 
-  .kpis{
-    display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
-    background:var(--line);
-    border-bottom:1px solid var(--line);
-  }
-  .kpi{background:var(--bg);padding:18px 26px;}
-  .kpi .num{font-size:26px;font-weight:600;}
-  .kpi .lbl{font-size:12px;color:var(--muted);margin-top:2px;}
-  .kpi.up .num{color:var(--teal);}
-  .kpi.warn .num{color:var(--amber);}
+        body {
+            margin: 0;
+            background: radial-gradient(circle at 15% 0%, #0E2038 0%, #0A1626 55%);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
 
-  .layout{
-    display:grid;
-    grid-template-columns:1.1fr 1.4fr;
-    gap:1px;
-    background:var(--line);
-  }
-  @media(max-width:900px){.layout{grid-template-columns:1fr;}}
+        h1,
+        h2,
+        h3,
+        .num {
+            font-family: 'Space Grotesk', sans-serif;
+        }
 
-  .panel{background:var(--bg);padding:26px 32px;}
-  .panel h2{font-size:14px;font-weight:600;margin:0 0 4px;letter-spacing:.2px;}
-  .panel .sub{font-size:12.5px;color:var(--muted);margin:0 0 20px;}
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 28px 36px 18px;
+            border-bottom: 1px solid var(--line);
+        }
 
-  /* Hex map */
-  .hexwrap{display:flex;flex-direction:column;align-items:center;}
-  .hexrow{display:flex;margin-top:-27px;}
-  .hexrow:first-child{margin-top:0;}
-  .hexrow.offset{margin-left:56px;}
-  .hex{
-    width:100px;height:114px;
-    clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
-    margin:0 4px;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    cursor:pointer;
-    transition:transform .15s ease, outline-color .15s ease;
-    position:relative;
-    border:none;
-    color:#06140F;
-    text-align:center;
-    padding:0 8px;
-  }
-  .hex:hover{transform:translateY(-3px);}
-  .hex.selected{outline:3px solid var(--text);outline-offset:-3px;transform:translateY(-3px);}
-  .hex .zname{font-size:10.5px;font-weight:600;line-height:1.2;color:#06140F;}
-  .hex .zscore{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;color:#06140F;}
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
 
-  .legend{display:flex;gap:18px;margin-top:22px;font-size:11.5px;color:var(--muted);align-items:center;justify-content:center;flex-wrap:wrap;}
-  .legend span{display:flex;align-items:center;gap:6px;}
-  .dot{width:10px;height:10px;border-radius:2px;display:inline-block;}
+        .brand .mark {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--teal), #1E9E7A);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #06251C;
+            font-size: 15px;
+        }
 
-  /* Detail panel */
-  .zonehead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
-  .zonehead h3{font-size:20px;margin:0;font-weight:600;}
-  .badge{
-    font-size:11.5px;padding:4px 10px;border-radius:20px;font-weight:600;
-  }
-  .badge.hot{background:rgba(255,122,110,.15);color:var(--red);}
-  .badge.mid{background:rgba(255,180,84,.15);color:var(--amber);}
-  .badge.low{background:rgba(62,231,180,.15);color:var(--teal);}
+        .brand h1 {
+            font-size: 19px;
+            margin: 0;
+            font-weight: 600;
+            letter-spacing: .2px;
+        }
 
-  canvas{max-height:220px;}
+        .brand p {
+            margin: 2px 0 0;
+            font-size: 12.5px;
+            color: var(--muted);
+        }
 
-  .bars{margin-top:20px;display:flex;flex-direction:column;gap:12px;}
-  .barrow{display:grid;grid-template-columns:120px 1fr 40px;align-items:center;gap:10px;font-size:12.5px;}
-  .barrow .label{color:var(--muted);}
-  .bartrack{height:7px;background:var(--surface-2);border-radius:4px;overflow:hidden;}
-  .barfill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--teal),#7FF0C9);}
-  .barval{text-align:right;font-weight:600;}
+        .meta {
+            text-align: right;
+            font-size: 12.5px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
 
-  .recommend{
-    margin-top:22px;padding:16px 18px;background:var(--surface);border-radius:10px;
-    border-left:3px solid var(--teal);font-size:13px;line-height:1.55;color:#D6E4FA;
-  }
-  .recommend b{color:var(--text);}
+        .meta b {
+            color: var(--text);
+        }
 
-  /* what-if */
-  .whatif{grid-column:1 / -1;background:var(--bg);padding:28px 32px;border-top:1px solid var(--line);}
-  .whatif h2{font-size:14px;font-weight:600;margin:0 0 4px;}
-  .whatif .sub{font-size:12.5px;color:var(--muted);margin:0 0 22px;}
-  .wf-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px;align-items:end;}
-  @media(max-width:900px){.wf-grid{grid-template-columns:1fr;}}
-  .wf-control label{font-size:12px;color:var(--muted);display:block;margin-bottom:8px;}
-  select{
-    width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--line);
-    color:var(--text);border-radius:8px;font-family:'Inter';font-size:13.5px;
-  }
-  input[type=range]{width:100%;accent-color:var(--teal);}
-  .sliderval{font-family:'Space Grotesk';font-size:22px;font-weight:600;margin-top:6px;}
+        .kpis {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--line);
+            border-bottom: 1px solid var(--line);
+        }
 
-  .wf-results{display:flex;gap:24px;}
-  .wf-stat{flex:1;background:var(--surface);border-radius:10px;padding:16px 18px;}
-  .wf-stat .l{font-size:11.5px;color:var(--muted);}
-  .wf-stat .v{font-family:'Space Grotesk';font-size:22px;font-weight:600;margin-top:4px;}
-  .wf-stat .v.pos{color:var(--teal);}
-  .wf-stat .v.neg{color:var(--red);}
+        .kpi {
+            background: var(--bg);
+            padding: 18px 26px;
+        }
 
-  footer{padding:18px 32px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);}
-</style>
+        .kpi .num {
+            font-size: 26px;
+            font-weight: 600;
+        }
+
+        .kpi .lbl {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .kpi.up .num {
+            color: var(--teal);
+        }
+
+        .kpi.warn .num {
+            color: var(--amber);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1.1fr 1.4fr;
+            gap: 1px;
+            background: var(--line);
+        }
+
+        @media(max-width:900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--bg);
+            padding: 26px 32px;
+        }
+
+        .panel h2 {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0 0 4px;
+            letter-spacing: .2px;
+        }
+
+        .panel .sub {
+            font-size: 12.5px;
+            color: var(--muted);
+            margin: 0 0 20px;
+        }
+
+        /* Hex map */
+        .hexwrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hexrow {
+            display: flex;
+            margin-top: -27px;
+        }
+
+        .hexrow:first-child {
+            margin-top: 0;
+        }
+
+        .hexrow.offset {
+            margin-left: 56px;
+        }
+
+        .hex {
+            width: 100px;
+            height: 114px;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            margin: 0 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform .15s ease, outline-color .15s ease;
+            position: relative;
+            border: none;
+            color: #06140F;
+            text-align: center;
+            padding: 0 8px;
+        }
+
+        .hex:hover {
+            transform: translateY(-3px);
+        }
+
+        .hex.selected {
+            outline: 3px solid var(--text);
+            outline-offset: -3px;
+            transform: translateY(-3px);
+        }
+
+        .hex .zname {
+            font-size: 10.5px;
+            font-weight: 600;
+            line-height: 1.2;
+            color: #06140F;
+        }
+
+        .hex .zscore {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 19px;
+            font-weight: 700;
+            color: #06140F;
+        }
+
+        .legend {
+            display: flex;
+            gap: 18px;
+            margin-top: 22px;
+            font-size: 11.5px;
+            color: var(--muted);
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .legend span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            display: inline-block;
+        }
+
+        /* Detail panel */
+        .zonehead {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 14px;
+        }
+
+        .zonehead h3 {
+            font-size: 20px;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .badge {
+            font-size: 11.5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .badge.hot {
+            background: rgba(255, 122, 110, .15);
+            color: var(--red);
+        }
+
+        .badge.mid {
+            background: rgba(255, 180, 84, .15);
+            color: var(--amber);
+        }
+
+        .badge.low {
+            background: rgba(62, 231, 180, .15);
+            color: var(--teal);
+        }
+
+        canvas {
+            max-height: 220px;
+        }
+
+        .bars {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .barrow {
+            display: grid;
+            grid-template-columns: 120px 1fr 40px;
+            align-items: center;
+            gap: 10px;
+            font-size: 12.5px;
+        }
+
+        .barrow .label {
+            color: var(--muted);
+        }
+
+        .bartrack {
+            height: 7px;
+            background: var(--surface-2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .barfill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--teal), #7FF0C9);
+        }
+
+        .barval {
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .recommend {
+            margin-top: 22px;
+            padding: 16px 18px;
+            background: var(--surface);
+            border-radius: 10px;
+            border-left: 3px solid var(--teal);
+            font-size: 13px;
+            line-height: 1.55;
+            color: #D6E4FA;
+        }
+
+        .recommend b {
+            color: var(--text);
+        }
+
+        /* what-if */
+        .whatif {
+            grid-column: 1 / -1;
+            background: var(--bg);
+            padding: 28px 32px;
+            border-top: 1px solid var(--line);
+        }
+
+        .whatif h2 {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0 0 4px;
+        }
+
+        .whatif .sub {
+            font-size: 12.5px;
+            color: var(--muted);
+            margin: 0 0 22px;
+        }
+
+        .wf-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 28px;
+            align-items: end;
+        }
+
+        @media(max-width:900px) {
+            .wf-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .wf-control label {
+            font-size: 12px;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            color: var(--text);
+            border-radius: 8px;
+            font-family: 'Inter';
+            font-size: 13.5px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--teal);
+        }
+
+        .sliderval {
+            font-family: 'Space Grotesk';
+            font-size: 22px;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        .wf-results {
+            display: flex;
+            gap: 24px;
+        }
+
+        .wf-stat {
+            flex: 1;
+            background: var(--surface);
+            border-radius: 10px;
+            padding: 16px 18px;
+        }
+
+        .wf-stat .l {
+            font-size: 11.5px;
+            color: var(--muted);
+        }
+
+        .wf-stat .v {
+            font-family: 'Space Grotesk';
+            font-size: 22px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .wf-stat .v.pos {
+            color: var(--teal);
+        }
+
+        .wf-stat .v.neg {
+            color: var(--red);
+        }
+
+        footer {
+            padding: 18px 32px;
+            font-size: 11.5px;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+        }
+    </style>
 </head>
+
 <body>
 
-<div class="topbar">
-  <div class="brand">
-    <div class="mark">CS</div>
-    <div>
-      <h1>ChargeSense</h1>
-      <p>AI-powered EV charging demand prediction · Team Neural Knights</p>
+    <div class="topbar">
+        <div class="brand">
+            <div class="mark">CS</div>
+            <div>
+                <h1>ChargeSense</h1>
+                <p>AI-powered EV charging demand prediction · Team Neural Knights</p>
+            </div>
+        </div>
+        <div class="meta">
+            SIH 2026 · PS ID S/W 12<br>
+            <b>Prototype build</b> — synthetic demo data
+        </div>
     </div>
-  </div>
-  <div class="meta">
-    SIH 2026 · PS ID S/W 12<br>
-    <b>Prototype build</b> — synthetic demo data
-  </div>
-</div>
 
-<div class="kpis">
-  <div class="kpi"><div class="num" id="kpi-zones">12</div><div class="lbl">Zones analyzed</div></div>
-  <div class="kpi warn"><div class="num" id="kpi-hot">4</div><div class="lbl">High-demand hotspots</div></div>
-  <div class="kpi"><div class="num" id="kpi-under">3</div><div class="lbl">Underserved zones</div></div>
-  <div class="kpi up"><div class="num" id="kpi-conf">87%</div><div class="lbl">Avg. model confidence</div></div>
-</div>
-
-<div class="layout">
-  <div class="panel">
-    <h2>City demand hotspot map</h2>
-    <p class="sub">Predicted charging demand by zone — click a cell to inspect its forecast.</p>
-    <div class="hexwrap" id="hexmap"></div>
-    <div class="legend">
-      <span><i class="dot" style="background:#3EE7B4"></i> Low demand</span>
-      <span><i class="dot" style="background:#FFB454"></i> Moderate</span>
-      <span><i class="dot" style="background:#FF7A6E"></i> High / hotspot</span>
+    <div class="kpis">
+        <div class="kpi">
+            <div class="num" id="kpi-zones">12</div>
+            <div class="lbl">Zones analyzed</div>
+        </div>
+        <div class="kpi warn">
+            <div class="num" id="kpi-hot">4</div>
+            <div class="lbl">High-demand hotspots</div>
+        </div>
+        <div class="kpi">
+            <div class="num" id="kpi-under">3</div>
+            <div class="lbl">Underserved zones</div>
+        </div>
+        <div class="kpi up">
+            <div class="num" id="kpi-conf">87%</div>
+            <div class="lbl">Avg. model confidence</div>
+        </div>
     </div>
-  </div>
 
-  <div class="panel">
-    <div class="zonehead">
-      <h3 id="zn-name">—</h3>
-      <span class="badge" id="zn-badge">—</span>
+    <div class="layout">
+        <div class="panel">
+            <h2>City demand hotspot map</h2>
+            <p class="sub">Predicted charging demand by zone — click a cell to inspect its forecast.</p>
+            <div class="hexwrap" id="hexmap"></div>
+            <div class="legend">
+                <span><i class="dot" style="background:#3EE7B4"></i> Low demand</span>
+                <span><i class="dot" style="background:#FFB454"></i> Moderate</span>
+                <span><i class="dot" style="background:#FF7A6E"></i> High / hotspot</span>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="zonehead">
+                <h3 id="zn-name">—</h3>
+                <span class="badge" id="zn-badge">—</span>
+            </div>
+            <canvas id="forecastChart"></canvas>
+
+            <div class="bars" id="zn-bars"></div>
+
+            <div class="recommend" id="zn-recommend"></div>
+        </div>
     </div>
-    <canvas id="forecastChart"></canvas>
 
-    <div class="bars" id="zn-bars"></div>
-
-    <div class="recommend" id="zn-recommend"></div>
-  </div>
-</div>
-
-<div class="whatif">
-  <h2>What-if scenario planner</h2>
-  <p class="sub">Simulate adding chargers to a zone and see the projected impact before committing capital.</p>
-  <div class="wf-grid">
-    <div class="wf-control">
-      <label>Target zone</label>
-      <select id="wf-zone"></select>
+    <div class="whatif">
+        <h2>What-if scenario planner</h2>
+        <p class="sub">Simulate adding chargers to a zone and see the projected impact before committing capital.</p>
+        <div class="wf-grid">
+            <div class="wf-control">
+                <label>Target zone</label>
+                <select id="wf-zone"></select>
+            </div>
+            <div class="wf-control">
+                <label>Additional chargers to deploy: <span id="wf-count-lbl">2</span></label>
+                <input type="range" id="wf-count" min="0" max="8" value="2">
+            </div>
+            <div class="wf-results">
+                <div class="wf-stat">
+                    <div class="l">Est. wait-time reduction</div>
+                    <div class="v pos" id="wf-wait">—</div>
+                </div>
+                <div class="wf-stat">
+                    <div class="l">Coverage score</div>
+                    <div class="v" id="wf-coverage">—</div>
+                </div>
+                <div class="wf-stat">
+                    <div class="l">Est. utilization</div>
+                    <div class="v" id="wf-util">—</div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="wf-control">
-      <label>Additional chargers to deploy: <span id="wf-count-lbl">2</span></label>
-      <input type="range" id="wf-count" min="0" max="8" value="2">
-    </div>
-    <div class="wf-results">
-      <div class="wf-stat">
-        <div class="l">Est. wait-time reduction</div>
-        <div class="v pos" id="wf-wait">—</div>
-      </div>
-      <div class="wf-stat">
-        <div class="l">Coverage score</div>
-        <div class="v" id="wf-coverage">—</div>
-      </div>
-      <div class="wf-stat">
-        <div class="l">Est. utilization</div>
-        <div class="v" id="wf-util">—</div>
-      </div>
-    </div>
-  </div>
-</div>
 
-<footer>
-  Demo runs entirely on synthetic data generated in-browser to illustrate the prediction pipeline (data ingestion → spatial-temporal forecasting → zone scoring → site ranking → capacity sizing). Swap in real traffic/EV/charging feeds to go live.
-</footer>
+    <footer>
+        Demo runs entirely on synthetic data generated in-browser to illustrate the prediction pipeline (data ingestion
+        → spatial-temporal forecasting → zone scoring → site ranking → capacity sizing). Swap in real
+        traffic/EV/charging feeds to go live.
+    </footer>
 
-<script>
-// ---------- synthetic data generation ----------
-const zoneNames = [
-  "IT Corridor", "Metro Interchange", "Mall District", "University Campus",
-  "Old City Market", "Industrial Park", "Airport Approach", "Suburban Junction",
-  "Tech Park East", "Riverside Commercial", "Residential Sector 12", "Highway Rest Stop"
-];
+    <script>
+        // ---------- synthetic data generation ----------
+        const zoneNames = [
+            "IT Corridor", "Metro Interchange", "Mall District", "University Campus",
+            "Old City Market", "Industrial Park", "Airport Approach", "Suburban Junction",
+            "Tech Park East", "Riverside Commercial", "Residential Sector 12", "Highway Rest Stop"
+        ];
 
-function seededRandom(seed){
-  let s = seed;
-  return function(){
-    s = (s * 9301 + 49297) % 233280;
-    return s / 233280;
-  };
-}
+        function seededRandom(seed) {
+            let s = seed;
+            return function () {
+                s = (s * 9301 + 49297) % 233280;
+                return s / 233280;
+            };
+        }
 
-const zones = zoneNames.map((name, i) => {
-  const rnd = seededRandom(i*97+13);
-  const evDensity = 40 + rnd()*55;
-  const traffic = 35 + rnd()*60;
-  const poi = 20 + rnd()*70;
-  const dwell = 30 + rnd()*60;
-  const existingCapacity = 20 + rnd()*70;
-  const score = Math.round((evDensity*0.3 + traffic*0.25 + poi*0.2 + dwell*0.15 + (100-existingCapacity)*0.1));
-  const confidence = Math.round(78 + rnd()*18);
-  // 24hr forecast curve: two peaks (morning/evening commute)
-  const hours = Array.from({length:24}, (_,h)=>{
-    const morning = Math.exp(-Math.pow(h-9,2)/8);
-    const evening = Math.exp(-Math.pow(h-18.5,2)/10);
-    const base = 0.15 + 0.55*morning + 0.75*evening;
-    const noise = (rnd()-0.5)*0.08;
-    return Math.max(0.05, Math.min(1, base+noise)) * (score/70);
-  });
-  return {name, evDensity, traffic, poi, dwell, existingCapacity, score, confidence, hours};
-});
+        const zones = zoneNames.map((name, i) => {
+            const rnd = seededRandom(i * 97 + 13);
+            const evDensity = 40 + rnd() * 55;
+            const traffic = 35 + rnd() * 60;
+            const poi = 20 + rnd() * 70;
+            const dwell = 30 + rnd() * 60;
+            const existingCapacity = 20 + rnd() * 70;
+            const score = Math.round((evDensity * 0.3 + traffic * 0.25 + poi * 0.2 + dwell * 0.15 + (100 - existingCapacity) * 0.1));
+            const confidence = Math.round(78 + rnd() * 18);
+            // 24hr forecast curve: two peaks (morning/evening commute)
+            const hours = Array.from({ length: 24 }, (_, h) => {
+                const morning = Math.exp(-Math.pow(h - 9, 2) / 8);
+                const evening = Math.exp(-Math.pow(h - 18.5, 2) / 10);
+                const base = 0.15 + 0.55 * morning + 0.75 * evening;
+                const noise = (rnd() - 0.5) * 0.08;
+                return Math.max(0.05, Math.min(1, base + noise)) * (score / 70);
+            });
+            return { name, evDensity, traffic, poi, dwell, existingCapacity, score, confidence, hours };
+        });
 
-function tierOf(score){
-  if(score>=65) return {label:"High demand", cls:"hot", color:"#FF7A6E"};
-  if(score>=45) return {label:"Moderate", cls:"mid", color:"#FFB454"};
-  return {label:"Low demand", cls:"low", color:"#3EE7B4"};
-}
+        function tierOf(score) {
+            if (score >= 65) return { label: "High demand", cls: "hot", color: "#FF7A6E" };
+            if (score >= 45) return { label: "Moderate", cls: "mid", color: "#FFB454" };
+            return { label: "Low demand", cls: "low", color: "#3EE7B4" };
+        }
 
-// ---------- KPIs ----------
-document.getElementById('kpi-zones').textContent = zones.length;
-document.getElementById('kpi-hot').textContent = zones.filter(z=>z.score>=65).length;
-document.getElementById('kpi-under').textContent = zones.filter(z=>z.score>=45 && z.existingCapacity<40).length;
-document.getElementById('kpi-conf').textContent = Math.round(zones.reduce((a,z)=>a+z.confidence,0)/zones.length) + "%";
+        // ---------- KPIs ----------
+        document.getElementById('kpi-zones').textContent = zones.length;
+        document.getElementById('kpi-hot').textContent = zones.filter(z => z.score >= 65).length;
+        document.getElementById('kpi-under').textContent = zones.filter(z => z.score >= 45 && z.existingCapacity < 40).length;
+        document.getElementById('kpi-conf').textContent = Math.round(zones.reduce((a, z) => a + z.confidence, 0) / zones.length) + "%";
 
-// ---------- hex map ----------
-const hexmap = document.getElementById('hexmap');
-const rowsLayout = [4,4,4]; // 12 zones in 3 rows of 4
-let zi = 0;
-rowsLayout.forEach((count, r)=>{
-  const row = document.createElement('div');
-  row.className = 'hexrow' + (r%2===1 ? ' offset' : '');
-  for(let c=0;c<count;c++){
-    const z = zones[zi];
-    const tier = tierOf(z.score);
-    const hex = document.createElement('div');
-    hex.className = 'hex';
-    hex.style.background = tier.color;
-    hex.dataset.index = zi;
-    hex.innerHTML = `<div class="zname">${z.name}</div><div class="zscore">${z.score}</div>`;
-    hex.addEventListener('click', ()=>selectZone(zi));
-    row.appendChild(hex);
-    zi++;
-  }
-  hexmap.appendChild(row);
-});
+        // ---------- hex map ----------
+        const hexmap = document.getElementById('hexmap');
+        const rowsLayout = [4, 4, 4]; // 12 zones in 3 rows of 4
+        let zi = 0;
+        rowsLayout.forEach((count, r) => {
+            const row = document.createElement('div');
+            row.className = 'hexrow' + (r % 2 === 1 ? ' offset' : '');
+            for (let c = 0; c < count; c++) {
+                const z = zones[zi];
+                const tier = tierOf(z.score);
+                const hex = document.createElement('div');
+                hex.className = 'hex';
+                hex.style.background = tier.color;
+                hex.dataset.index = zi;
+                hex.innerHTML = `<div class="zname">${z.name}</div><div class="zscore">${z.score}</div>`;
+                hex.addEventListener('click', () => selectZone(zi));
+                row.appendChild(hex);
+                zi++;
+            }
+            hexmap.appendChild(row);
+        });
 
-// ---------- forecast chart ----------
-let chart;
-function renderChart(z){
-  const ctx = document.getElementById('forecastChart').getContext('2d');
-  const labels = Array.from({length:24},(_,h)=>h+":00");
-  const upper = z.hours.map(v=>Math.min(1, v + (1-z.confidence/100)*0.5)*100);
-  const lower = z.hours.map(v=>Math.max(0, v - (1-z.confidence/100)*0.5)*100);
-  const mid = z.hours.map(v=>v*100);
+        // ---------- forecast chart ----------
+        let chart;
+        function renderChart(z) {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            const labels = Array.from({ length: 24 }, (_, h) => h + ":00");
+            const upper = z.hours.map(v => Math.min(1, v + (1 - z.confidence / 100) * 0.5) * 100);
+            const lower = z.hours.map(v => Math.max(0, v - (1 - z.confidence / 100) * 0.5) * 100);
+            const mid = z.hours.map(v => v * 100);
 
-  if(chart) chart.destroy();
-  chart = new Chart(ctx, {
-    type:'line',
-    data:{
-      labels,
-      datasets:[
-        {label:'Upper bound', data:upper, borderWidth:0, pointRadius:0, backgroundColor:'rgba(62,231,180,0.08)', fill:'+1'},
-        {label:'Predicted demand', data:mid, borderColor:'#3EE7B4', backgroundColor:'rgba(62,231,180,0.15)', borderWidth:2.5, pointRadius:0, tension:0.35, fill:false},
-        {label:'Lower bound', data:lower, borderWidth:0, pointRadius:0, backgroundColor:'rgba(62,231,180,0.08)', fill:false}
-      ]
-    },
-    options:{
-      responsive:true,
-      plugins:{ legend:{display:false}, tooltip:{callbacks:{title:(items)=>items[0].label + ' hrs'}} },
-      scales:{
-        x:{ ticks:{color:'#8FA5C7', maxTicksLimit:8, font:{size:10.5}}, grid:{color:'#22385A'} },
-        y:{ ticks:{color:'#8FA5C7', font:{size:10.5}}, grid:{color:'#22385A'}, suggestedMin:0, suggestedMax:100, title:{display:true,text:'Demand index',color:'#8FA5C7',font:{size:11}} }
-      }
-    }
-  });
-}
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'Upper bound', data: upper, borderWidth: 0, pointRadius: 0, backgroundColor: 'rgba(62,231,180,0.08)', fill: '+1' },
+                        { label: 'Predicted demand', data: mid, borderColor: '#3EE7B4', backgroundColor: 'rgba(62,231,180,0.15)', borderWidth: 2.5, pointRadius: 0, tension: 0.35, fill: false },
+                        { label: 'Lower bound', data: lower, borderWidth: 0, pointRadius: 0, backgroundColor: 'rgba(62,231,180,0.08)', fill: false }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { title: (items) => items[0].label + ' hrs' } } },
+                    scales: {
+                        x: { ticks: { color: '#8FA5C7', maxTicksLimit: 8, font: { size: 10.5 } }, grid: { color: '#22385A' } },
+                        y: { ticks: { color: '#8FA5C7', font: { size: 10.5 } }, grid: { color: '#22385A' }, suggestedMin: 0, suggestedMax: 100, title: { display: true, text: 'Demand index', color: '#8FA5C7', font: { size: 11 } } }
+                    }
+                }
+            });
+        }
 
-// ---------- zone detail ----------
-let selectedIndex = 0;
-function selectZone(i){
-  selectedIndex = i;
-  document.querySelectorAll('.hex').forEach(h=>h.classList.toggle('selected', +h.dataset.index===i));
-  const z = zones[i];
-  const tier = tierOf(z.score);
-  document.getElementById('zn-name').textContent = z.name;
-  const badge = document.getElementById('zn-badge');
-  badge.textContent = tier.label + ' · ' + z.confidence + '% confidence';
-  badge.className = 'badge ' + tier.cls;
+        // ---------- zone detail ----------
+        let selectedIndex = 0;
+        function selectZone(i) {
+            selectedIndex = i;
+            document.querySelectorAll('.hex').forEach(h => h.classList.toggle('selected', +h.dataset.index === i));
+            const z = zones[i];
+            const tier = tierOf(z.score);
+            document.getElementById('zn-name').textContent = z.name;
+            const badge = document.getElementById('zn-badge');
+            badge.textContent = tier.label + ' · ' + z.confidence + '% confidence';
+            badge.className = 'badge ' + tier.cls;
 
-  renderChart(z);
+            renderChart(z);
 
-  const bars = [
-    ['EV density', z.evDensity],
-    ['Traffic flow', z.traffic],
-    ['Nearby POIs', z.poi],
-    ['Avg. dwell time', z.dwell],
-    ['Existing capacity', z.existingCapacity],
-  ];
-  document.getElementById('zn-bars').innerHTML = bars.map(([label,val])=>`
+            const bars = [
+                ['EV density', z.evDensity],
+                ['Traffic flow', z.traffic],
+                ['Nearby POIs', z.poi],
+                ['Avg. dwell time', z.dwell],
+                ['Existing capacity', z.existingCapacity],
+            ];
+            document.getElementById('zn-bars').innerHTML = bars.map(([label, val]) => `
     <div class="barrow">
       <div class="label">${label}</div>
       <div class="bartrack"><div class="barfill" style="width:${val}%"></div></div>
@@ -358,48 +663,49 @@ function selectZone(i){
     </div>
   `).join('');
 
-  const gapNote = z.existingCapacity < 40 && z.score >= 45
-    ? `This zone is <b>underserved</b> relative to predicted demand — existing capacity (${Math.round(z.existingCapacity)}) is well below what the ${tier.label.toLowerCase()} forecast supports.`
-    : z.score >= 65
-    ? `This is a confirmed <b>hotspot</b>. Peak load falls in the evening commute window — prioritize fast chargers here.`
-    : `Demand here is manageable with current infrastructure. Low priority for near-term expansion.`;
+            const gapNote = z.existingCapacity < 40 && z.score >= 45
+                ? `This zone is <b>underserved</b> relative to predicted demand — existing capacity (${Math.round(z.existingCapacity)}) is well below what the ${tier.label.toLowerCase()} forecast supports.`
+                : z.score >= 65
+                    ? `This is a confirmed <b>hotspot</b>. Peak load falls in the evening commute window — prioritize fast chargers here.`
+                    : `Demand here is manageable with current infrastructure. Low priority for near-term expansion.`;
 
-  document.getElementById('zn-recommend').innerHTML =
-    `<b>Recommendation:</b> ${gapNote} Model confidence is ${z.confidence}%, based on ${Math.round(60+z.confidence/3)} days of comparable historical signal.`;
-}
+            document.getElementById('zn-recommend').innerHTML =
+                `<b>Recommendation:</b> ${gapNote} Model confidence is ${z.confidence}%, based on ${Math.round(60 + z.confidence / 3)} days of comparable historical signal.`;
+        }
 
-// ---------- what-if planner ----------
-const wfZoneSelect = document.getElementById('wf-zone');
-zones.forEach((z,i)=>{
-  const opt = document.createElement('option');
-  opt.value = i; opt.textContent = z.name;
-  wfZoneSelect.appendChild(opt);
-});
+        // ---------- what-if planner ----------
+        const wfZoneSelect = document.getElementById('wf-zone');
+        zones.forEach((z, i) => {
+            const opt = document.createElement('option');
+            opt.value = i; opt.textContent = z.name;
+            wfZoneSelect.appendChild(opt);
+        });
 
-function updateWhatIf(){
-  const z = zones[+wfZoneSelect.value];
-  const count = +document.getElementById('wf-count').value;
-  document.getElementById('wf-count-lbl').textContent = count;
+        function updateWhatIf() {
+            const z = zones[+wfZoneSelect.value];
+            const count = +document.getElementById('wf-count').value;
+            document.getElementById('wf-count-lbl').textContent = count;
 
-  const waitReduction = Math.min(85, Math.round(count * (8 + z.score/12)));
-  const newCapacity = Math.min(100, z.existingCapacity + count*9);
-  const coverage = Math.round(100 - Math.max(0, z.score - newCapacity*0.9));
-  const utilization = Math.max(15, Math.round(100 - (newCapacity - z.score)*0.6));
+            const waitReduction = Math.min(85, Math.round(count * (8 + z.score / 12)));
+            const newCapacity = Math.min(100, z.existingCapacity + count * 9);
+            const coverage = Math.round(100 - Math.max(0, z.score - newCapacity * 0.9));
+            const utilization = Math.max(15, Math.round(100 - (newCapacity - z.score) * 0.6));
 
-  document.getElementById('wf-wait').textContent = count===0 ? '—' : `−${waitReduction}%`;
-  document.getElementById('wf-coverage').textContent = `${Math.max(0,Math.min(100,coverage))}/100`;
-  document.getElementById('wf-util').textContent = `${Math.max(0,Math.min(100,utilization))}%`;
+            document.getElementById('wf-wait').textContent = count === 0 ? '—' : `−${waitReduction}%`;
+            document.getElementById('wf-coverage').textContent = `${Math.max(0, Math.min(100, coverage))}/100`;
+            document.getElementById('wf-util').textContent = `${Math.max(0, Math.min(100, utilization))}%`;
 
-  const utilEl = document.getElementById('wf-util');
-  utilEl.className = 'v ' + (utilization > 40 && utilization < 90 ? 'pos' : 'neg');
-}
-wfZoneSelect.addEventListener('change', updateWhatIf);
-document.getElementById('wf-count').addEventListener('input', updateWhatIf);
+            const utilEl = document.getElementById('wf-util');
+            utilEl.className = 'v ' + (utilization > 40 && utilization < 90 ? 'pos' : 'neg');
+        }
+        wfZoneSelect.addEventListener('change', updateWhatIf);
+        document.getElementById('wf-count').addEventListener('input', updateWhatIf);
 
-// ---------- init ----------
-selectZone(0);
-wfZoneSelect.value = 0;
-updateWhatIf();
-</script>
+        // ---------- init ----------
+        selectZone(0);
+        wfZoneSelect.value = 0;
+        updateWhatIf();
+    </script>
 </body>
+
 </html>
